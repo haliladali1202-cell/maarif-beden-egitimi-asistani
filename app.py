@@ -48,6 +48,7 @@ def canli_tarih_al():
     return datetime.date.today()
 
 bugun = canli_tarih_al()
+# Sezonluk kilitlenme tarihi: Her yılın 20 Ağustos günü
 sezon_kilit_tarihi = datetime.date(bugun.year, 8, 20)
 sezon_kilitli_mi = bugun >= sezon_kilit_tarihi
 
@@ -133,7 +134,7 @@ def hava_durumu_ve_mekan_al(sehir):
         sicaklik = res["current_weather"]["temperature"]
         kod = res["current_weather"]["weathercode"]
         
-        # Kod listesi yağış durumunu temsil eder
+        # Kod listesi yağış durumunu temsil eder (Örn: 51, 53, 61 vb. yağmurlu durumlar)
         if kod in:
             return sicaklik, "Yağışlı/Fırtınalı", "🚨 Kapalı Spor Salonu veya Çok Amaçlı Derslik / Sınıf (Teorik/Eğitsel Oyun)"
         else:
@@ -205,4 +206,3 @@ with tab1:
 with tab2:
     st.subheader("📆 Resmi ve Kişisel Çalışma Takvimi")
     st.write("**📌 Yeni Toplantı, Görev veya Sınav Hatırlatması Ekle**")
-    g_tarih = st.date_input("Görev Tarihi:", min_value=bugun)
