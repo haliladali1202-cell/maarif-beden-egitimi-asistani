@@ -76,7 +76,6 @@ if not st.session_state.giris_yapildi:
     if st.button("Sisteme Güvenli Giriş Yap"):
         if gecici_sifre == "Maarif2026" and len(tel_no) >= 10:
             st.session_state.giris_yapildi = True
-            st. those_are_not_variables = True
             st.rerun()
         else:
             st.error("Hatalı geçici şifre veya eksik telefon numarası bilgisi!")
@@ -97,7 +96,6 @@ if st.session_state.giris_yapildi and not st.session_state.sifre_degisti:
         else:
             st.error("Şifreler eşleşmiyor veya boş bırakılamaz!")
     st.stop()
-
 # --- 5. SEZONLUK MÜFREDAT KİLİT KONTROLÜ ---
 if sezon_kilitli_mi and st.session_state.kullanici_turu != "Elite":
     st.error(f"🛑 {bugun.year} - {bugun.year+1} Eğitim Sezonu Yeni Müfredat Kilidi!")
@@ -117,15 +115,13 @@ def hava_durumu_ve_mekan_al(sehir):
     koordinatlar = {"İstanbul": (41.0082, 28.9784), "Ankara": (39.9334, 32.8597), "İzmir": (38.4192, 27.1287), "Bursa": (40.1885, 29.0610)}
     lat, lon = koordinatlar.get(sehir, (41.0082, 28.9784))
     try:
-        # Open-Meteo API URL'si düzeltildi
-        url = f"https://open-meteo.com{lat}&longitude={lon}&current_weather=true"
+        # Hatalı base URL yapısı ://open-meteo.com olarak güncellendi ve parametreler bağlandı
+        url = f"https://://open-meteo.com?latitude={lat}&longitude={lon}&current_weather=true"
         res = requests.get(url, timeout=3).json()
         sicaklik = res["current_weather"]["temperature"]
         kod = res["current_weather"]["weathercode"]
         
-        # WMO Weather codes listesi (51-82 aralığı yağışlı durumlar)
         yagisli_kodlar = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82]
-        
         if kod in yagisli_kodlar:
             return sicaklik, "Yağışlı/Fırtınalı", "🚨 Kapalı Spor Salonu veya Çok Amaçlı Derslik / Sınıf (Teorik/Eğitsel Oyun)"
         else:
@@ -147,7 +143,6 @@ with tab1:
     st.success(f"**Önerilen Ders İşleme Alanı:** {mekan_onerisi}")
     st.write("---")
     st.subheader("Haftalık Ders Programı")
-    
     gunler = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"]
     sınıflar = ["5-A", "6-B", "7-C", "9-A", "10-B", "Sağlık Bilgisi (Sınıf)"]
     
@@ -178,7 +173,7 @@ with tab1:
         else:
             st.session_state.gunluk_kota += 1
         return True
-
+        
     if st.button("📥 Kazanım ve Erdem Entegreli Yıllık Planı İndir (Maarif Modeli Uyumlu)"):
         if kota_kontrol_ve_indir("Yıllık"):
             st.success("✅ Yıllık Plan başarıyla üretildi ve cihazınıza indirildi. (Süreç Odaklı Rubrikler Dahildir)")
