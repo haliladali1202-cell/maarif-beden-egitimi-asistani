@@ -20,13 +20,20 @@ RESMI_GUNLER = [
 ]
 
 # --- 2. OTONOM SAAS VE GÜVENLİK ALTYAPISI (SESSION STATE) ---
-if "kullanici_turu" not in st.session_state: st.session_state.kullanici_turu = "Free"
-if "uye_yili" not in st.session_state: st.session_state.uye_yili = 1
-if "yillik_kota" not in st.session_state: st.session_state.yillik_kota = 0
-if "gunluk_kota" not in st.session_state: st.session_state.gunluk_kota = 0
-if "giris_yapildi" not in st.session_state: st.session_state.giris_yapildi = False
-if "sifre_degisti" not in st.session_state: st.session_state.sifre_degisti = False
-if "gorevler" not in st.session_state: st.session_state.gorevler = []
+if "kullanici_turu" not in st.session_state:
+    st.session_state.kullanici_turu = "Free"
+if "uye_yili" not in st.session_state:
+    st.session_state.uye_yili = 1
+if "yillik_kota" not in st.session_state:
+    st.session_state.yillik_kota = 0
+if "gunluk_kota" not in st.session_state:
+    st.session_state.gunluk_kota = 0
+if "giris_yapildi" not in st.session_state:
+    st.session_state.giris_yapildi = False
+if "sifre_degisti" not in st.session_state:
+    st.session_state.sifre_degisti = False
+if "gorevler" not in st.session_state:
+    st.session_state.gorevler = []
 
 # --- 3. DÜNYA SAAT SUNUCUSU VE SEZONLUK KİLİT KONTROLÜ ---
 @st.cache_data(ttl=3600)
@@ -42,33 +49,36 @@ def canli_tarih_al():
 
 bugun = canli_tarih_al()
 sezon_kilit_tarihi = datetime.date(bugun.year, 8, 20)
-sezon_kilitli_mi = bugun >= sezon_kilit_tarihi
+sezon_kilitli_mi = bugun >= seizoen_kilit_tarihi if 'seizoen_kilit_tarihi' in locals() else bugun >= sezon_kilit_tarihi
 
 # --- FİYATLANDIRMA VE SADAKAT İNDİRİMİ MOTORU ---
-artis_katsayisi = 1.0
+artis_katsayisi = 1.0  
 baz_yenileme_ucreti = 149
+
 if st.session_state.uye_yili == 2:
-    sadakat_indirimi = 0.85
+    sadakat_indirimi = 0.85 
 elif st.session_state.uye_yili >= 3:
-    sadakat_indirimi = 0.75
+    sadakat_indirimi = 0.75 
 else:
     sadakat_indirimi = 1.0
+
 guncel_yenileme_ucreti = int(baz_yenileme_ucreti * artis_katsayisi * sadakat_indirimi)
 
 # --- MOBİL / BİLGİSAYAR OTO-UYUM CSS KATMANI ---
 st.markdown("""
-<style>
-[data-testid="stSidebar"] { min-width: 280px; max-width: 320px; }
-.stButton>button { width: 100%; border-radius: 8px; height: 45px; font-weight: bold; }
-.reportview-container .main .block-container { max-width: 480px; padding: 10px; }
-.premium-banner { background: linear-gradient(90deg, #fff3cd, #ffeeba); padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #ffeeba; margin-top: 20px; font-size: 13px;}
-</style>
-""", unsafe_allow_html=True)
+    <style>
+    [data-testid="stSidebar"] { min-width: 280px; max-width: 320px; }
+    .stButton>button { width: 100%; border-radius: 8px; height: 45px; font-weight: bold; }
+    .reportview-container .main .block-container { max-width: 480px; padding: 10px; }
+    .premium-banner { background: linear-gradient(90deg, #fff3cd, #ffeeba); padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #ffeeba; margin-top: 20px; font-size: 13px;}
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- 4. GİRİŞ VE SAKLI GÜVENLİK EKRANI ---
 if not st.session_state.giris_yapildi:
     st.title("📱 Maarif Beden Eğitimi Asistanı")
     st.subheader("Öğretmen Giriş Paneli")
+    
     giriş_turu = st.radio("En Kolay Giriş Seçeneğini Seçin:", ["🔴 Google ile Giriş Yap", "🍏 Apple ile Giriş Yap", "📞 Telefon Numarası ile Giriş Yap"])
     tel_no = st.text_input("Telefon Numaranız:", placeholder="5xx xxx xx xx")
     gecici_sifre = st.text_input("Size Gönderilen Geçici Şifre:", type="password")
@@ -96,33 +106,34 @@ if st.session_state.giris_yapildi and not st.session_state.sifre_degisti:
         else:
             st.error("Şifreler eşleşmiyor veya boş bırakılamaz!")
     st.stop()
+
 # --- 5. SEZONLUK MÜFREDAT KİLİT KONTROLÜ ---
 if sezon_kilitli_mi and st.session_state.kullanici_turu != "Elite":
     st.error(f"🛑 {bugun.year} - {bugun.year+1} Eğitim Sezonu Yeni Müfredat Kilidi!")
     st.write("Okulların açılmasına 3 hafta kala plan indirme yetkileriniz askıya alınmıştır. Yeni dönemin güncel planlarını hatasız indirmek için müfredat güncelleme harcını yatırmanız gerekmektedir.")
     st.info(f"**Sadakat Programı Üyelik Yılınız:** {st.session_state.uye_yili}. Yıl. Size Özel Güncelleme Ücreti: **{guncel_yenileme_ucreti} TL** (Normal Fiyat: 149 TL)")
-    lisans_kodu = st.text_input("Siteden Aldığınız Müfredat Güncelleme Kodunu Girin:")
     
+    lisans_kodu = st.text_input("Siteden Aldığınız Müfredat Güncelleme Kodunu Girin:")
     if st.button("Müfredatı Yenile ve Kilidi Kaldır"):
         if lisans_kodu == "GUNCEL99":
             st.session_state.kullanici_turu = "Elite"
             st.success("Müfredat başarıyla güncellendi! Tüm kilitler açıldı.")
             st.rerun()
     st.stop()
-
 # --- 6. CANLI HAVA DURUMU VE MEKAN ÖNERİ MOTORU ---
 def hava_durumu_ve_mekan_al(sehir):
     koordinatlar = {"İstanbul": (41.0082, 28.9784), "Ankara": (39.9334, 32.8597), "İzmir": (38.4192, 27.1287), "Bursa": (40.1885, 29.0610)}
     lat, lon = koordinatlar.get(sehir, (41.0082, 28.9784))
+    
     try:
-        # Hatalı base URL yapısı ://open-meteo.com olarak güncellendi ve parametreler bağlandı
-        url = f"https://://open-meteo.com?latitude={lat}&longitude={lon}&current_weather=true"
+        url = f"https://open-meteo.com{lat}&longitude={lon}&current_weather=true"
         res = requests.get(url, timeout=3).json()
         sicaklik = res["current_weather"]["temperature"]
         kod = res["current_weather"]["weathercode"]
         
-        yagisli_kodlar = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82]
-        if kod in yagisli_kodlar:
+        # WMO Yağış ve Fırtına Kodları (51, 53, 61, 63, 65, 80, 81, 82 vb.)
+        yagis_kodlari = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99]
+        if kod in yagis_kodlari:
             return sicaklik, "Yağışlı/Fırtınalı", "🚨 Kapalı Spor Salonu veya Çok Amaçlı Derslik / Sınıf (Teorik/Eğitsel Oyun)"
         else:
             return sicaklik, "Açık/Güvenli", "Açık Alan / Okul Bahçesi, Açık Saha veya Halı Saha (Fiziksel Dayanıklılık ve Parkur)"
@@ -132,17 +143,22 @@ def hava_durumu_ve_mekan_al(sehir):
 # --- 7. ANA MENÜ VE ARAYÜZ SİSTEMİ ---
 st.title("🏆 Türkiye Yüzyılı Maarif Modeli")
 st.subheader("Beden Eğitimi ve Spor Otonom Öğretmen Asistanı")
+
 tab1, tab2, tab3, tab4 = st.tabs(["📅 Ders Programı & Planlar", "📆 Çalışma Takvimi & Hatırlatıcı", "🌐 Canlı Telifsiz Kaynak Kazıcı", "💎 Abonelik & Pro Paket"])
 
 # --- TAB 1: DERS PROGRAMI VE PLAN MODÜLÜ ---
 with tab1:
     st.info("💡 Ders kartının yanındaki '📄 Plana Git' butonu sizi otomatik olarak Maarif plan yapılandırıcıya aktarır.")
+    
     sehir = st.selectbox("Canlı Mekan Önerisi İçin Şehrinizi Seçin:", ["İstanbul", "Ankara", "İzmir", "Bursa"])
     sicaklik, durum, mekan_onerisi = hava_durumu_ve_mekan_al(sehir)
+    
     st.metric(label=f"Canlı Hava Durumu ({sehir})", value=f"{sicaklik} °C - {durum}")
     st.success(f"**Önerilen Ders İşleme Alanı:** {mekan_onerisi}")
+    
     st.write("---")
     st.subheader("Haftalık Ders Programı")
+    
     gunler = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"]
     sınıflar = ["5-A", "6-B", "7-C", "9-A", "10-B", "Sağlık Bilgisi (Sınıf)"]
     
@@ -154,9 +170,10 @@ with tab1:
             with col2:
                 if st.button("📄 Plana Git", key=f"btn_{gun}"):
                     st.toast(f"{secilen_sinif} ders planı şablonu aşağıda başarıyla yapılandırıldı!")
-                    
+
     st.write("---")
     st.subheader("📋 Türkiye Yüzyılı Maarif Modeli Plan Yapılandırıcı")
+    
     st.write("**Plan İndirme Kotalarınız:**")
     st.text(f"Yıllık Plan İndirme: {st.session_state.yillik_kota}/5 | Günlük Plan İndirme: {st.session_state.gunluk_kota}/20")
     
@@ -168,16 +185,17 @@ with tab1:
             if tur == "Günlük" and st.session_state.gunluk_kota >= 20:
                 st.error("🛑 Günlük plan indirme limitine ulaştınız! Devam etmek için Pro pakete geçin veya Jeton kullanın.")
                 return False
+        
         if tur == "Yıllık":
             st.session_state.yillik_kota += 1
         else:
             st.session_state.gunluk_kota += 1
         return True
-        
+
     if st.button("📥 Kazanım ve Erdem Entegreli Yıllık Planı İndir (Maarif Modeli Uyumlu)"):
         if kota_kontrol_ve_indir("Yıllık"):
             st.success("✅ Yıllık Plan başarıyla üretildi ve cihazınıza indirildi. (Süreç Odaklı Rubrikler Dahildir)")
-            
+
     if st.button("📥 Erdem-Değer-Eylem Odaklı Günlük Planı İndir"):
         if kota_kontrol_ve_indir("Günlük"):
             st.success("✅ Günlük Ders Planı (Fair-Play Temalı) başarıyla cihazınıza aktarıldı.")
@@ -187,3 +205,74 @@ with tab2:
     st.subheader("📆 Resmi ve Kişisel Çalışma Takvimi")
     st.write("**📌 Yeni Toplantı, Görev veya Sınav Hatırlatması Ekle**")
     g_tarih = st.date_input("Görev Tarihi:", min_value=bugun)
+    g_aciklama = st.text_input("Açıklama / Görev Notu:", placeholder="Zümre toplantısı, 1. Sınav uygulaması vb.")
+    
+    if st.button("Görev Takvimine Ekle"):
+        if g_aciklama.strip():
+            st.session_state.gorevler.append({"Tarih": g_tarih.strftime("%d %B"), "Etkinlik": f"📌 {g_aciklama.strip()}"})
+            st.success("Görev takvime başarıyla işlendi!")
+        else:
+            st.error("Lütfen görev açıklaması giriniz.")
+            
+    st.write("---")
+    
+    tum_etkinlikler = RESMI_GUNLER + st.session_state.gorevler
+    df_takvim = pd.DataFrame(tum_etkinlikler)
+    
+    st.table(df_takvim)
+    
+    csv_veri = df_takvim.to_csv(index=False).encode('utf-8')
+    st.download_button(label="📥 Tüm Çalışma Takvimini İndir (Excel/CSV)", data=csv_veri, file_name="maarif_calisma_takvimi.csv", mime="text/csv")
+
+# --- TAB 3: CANLI TELİFSİZ KAYNAK KAZICI ---
+with tab3:
+    st.subheader("🛡️ %0 Hata Paylı Kamu Malı Bilgi Ağı")
+    st.write("Aşağıdaki butonlar yardımıyla MEB resmi ağlarına doğrudan gidebilir veya Vikipedi üzerinden telifsiz akademik tanımları çekebilirsiniz.")
+    
+    st.markdown("[🔗 EBA (Eğitim Bilişim Ağı) Resmi Sitesine Git](https://eba.gov.tr)")
+    st.markdown("[🔗 ÖBA (Öğretmen Bilişim Ağı) Müfredat Sayfasına Git](https://oba.gov.tr)")
+    
+    if st.button("🌐 Vikipedi Beden Eğitimi Akademik Verisini Canlı Tara"):
+        try:
+            viki_url = "https://wikipedia.org"
+            html = requests.get(viki_url, timeout=3).text
+            soup = BeautifulSoup(html, "html.parser")
+            paragraf = soup.find("p").text
+            st.write("**Canlı Çekilen Kamu Bilgisi:**")
+            st.info(paragraf)
+        except:
+            st.info("Dahili Yedek Kitaplık Devrede: Beden eğitimi; insanın fiziksel, zihinsel ve sosyal gelişimini spor ve hareketler yoluyla bütünsel olarak sağlayan telifsiz pedagojik disiplindir.")
+
+# --- TAB 4: ABONELİK VE PRO PAKET (UPSELLING) ---
+with tab4:
+    st.subheader("💎 Üyelik Modelleri ve Akıllı Geçiş Geçidi")
+    st.write(f"Mevcut Üyelik Statünüz: **{st.session_state.kullanici_turu}**")
+    
+    if st.session_state.kullanici_turu == "Free":
+        st.write("---")
+        st.subheader("🎫 Tekil Plan İndirme Jetonu")
+        st.write("Abonelik almak istemiyorsanız, sadece ihtiyacınız olan planı tek tıkla indirebilirsiniz.")
+        st.markdown("[🛒 39 TL'ye Anlık İndirme Jetonu Satın Al (Ödeme Sayfası)](#)")
+        
+        st.write("---")
+        st.subheader("🚀 Avantajlı Yıllık Paketler")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown("### 🥉 Başlangıç\n**249 TL / Yıl**\n* Sınırsız Program\n* +50 Plan İndirme\n\n[Satın Al](#)")
+        with col2:
+            st.markdown("### 🥈 Standart PRO\n**399 TL / Yıl**\n* Sınırsız Plan İndirme\n* Canlı Veri Tarayıcı\n\n[Satın Al](#)")
+        with col3:
+            st.markdown("### 🥇 Elite Sürüm\n**599 TL / Yıl**\n* Tüm Özellikler Açık\n* Sağlık Kartı & BEP\n* Sıfır Reklam\n\n[Satın Al](#)")
+            
+    elif st.session_state.kullanici_turu == "Pro":
+        st.subheader("🪜 Üst Pakete Geçiş (Sadece Fark Ödeyerek Sürüm Yükseltin!)")
+        st.markdown("[🥈 Sadece 150 TL Fark Ödeyerek Standart PRO Sürümüne Yükselt](#)")
+        st.markdown("[🥇 Sadece 350 TL Fark Ödeyerek Tüm İmkanlar Dahil Elite Paketine Yükselt](#)")
+
+# --- 8. ZARİF VE KULLANICI DOSTU SPONSOR/REKLAM ŞERİDİ ---
+if st.session_state.kullanici_turu == "Free":
+    st.markdown("""
+        <div class="premium-banner">
+            🤝 <b>Sponsorluk Alanı:</b> Türkiye geneli okul spor malzemeleri ihtiyaçlarınız için <b>Decathlon Türkiye</b> eğitim kataloğunu inceleyebilirsiniz. <a href='#'>Kampanyalı Katalog Ara</a>
+        </div>
+        """, unsafe_allow_html=True)
