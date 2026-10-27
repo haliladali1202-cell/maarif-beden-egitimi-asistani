@@ -5,7 +5,6 @@ import requests
 from bs4 import BeautifulSoup
 
 # --- 1. ÖZELLEŞTİRME VE MARKA ALANI (NO-CODE BRANDING) ---
-# İleride logonuzu ve ikonunuzu değiştirmek için uygulama klasörüne 'logo.png' ve 'favicon.png' yüklemeniz yeterlidir.
 try:
     st.set_page_config(page_title="Maarif Beden Eğitimi Asistanı", page_icon="favicon.png", layout="wide")
 except:
@@ -40,7 +39,7 @@ if "gorevler" not in st.session_state:
 @st.cache_data(ttl=3600)
 def canli_tarih_al():
     try:
-        response = requests.get("http://worldtimeapi.org", timeout=3)
+        response = requests.get("https://worldtimeapi.org", timeout=3)
         if response.status_code == 200:
             data = response.json()
             return datetime.datetime.strptime(data["datetime"][:10], "%Y-%m-%d").date()
@@ -49,18 +48,17 @@ def canli_tarih_al():
     return datetime.date.today()
 
 bugun = canli_tarih_al()
-# Sezonluk kilitlenme tarihi: Her yılın 20 Ağustos günü
 sezon_kilit_tarihi = datetime.date(bugun.year, 8, 20)
 sezon_kilitli_mi = bugun >= sezon_kilit_tarihi
 
 # --- FİYATLANDIRMA VE SADAKAT İNDİRİMİ MOTORU ---
-artis_katsayisi = 1.0  # Gelecek yıllarda fiyatları otomatik artırmak için çarpan (Örn: 1.40)
+artis_katsayisi = 1.0  
 baz_yenileme_ucreti = 149
 
 if st.session_state.uye_yili == 2:
-    sadakat_indirimi = 0.85 # %15 İndirim
+    sadakat_indirimi = 0.85 
 elif st.session_state.uye_yili >= 3:
-    sadakat_indirimi = 0.75 # %25 İndirim
+    sadakat_indirimi = 0.75 
 else:
     sadakat_indirimi = 1.0
 
@@ -113,7 +111,7 @@ if st.session_state.giris_yapildi and not st.session_state.sifre_degisti:
 # --- 5. SEZONLUK MÜFREDAT KİLİT KONTROLÜ ---
 if sezon_kilitli_mi and st.session_state.kullanici_turu != "Elite":
     st.error(f"🛑 {bugun.year} - {bugun.year+1} Eğitim Sezonu Yeni Müfredat Kilidi!")
-    st.write(f"Okulların açılmasına 3 hafta kala plan indirme yetkileriniz askıya alınmıştır. Yeni dönemin güncel planlarını hatasız indirmek için müfredat güncelleme harcını yatırmanız gerekmektedir.")
+    st.write("Okulların açılmasına 3 hafta kala plan indirme yetkileriniz askıya alınmıştır. Yeni dönemin güncel planlarını hatasız indirmek için müfredat güncelleme harcını yatırmanız gerekmektedir.")
     st.info(f"**Sadakat Programı Üyelik Yılınız:** {st.session_state.uye_yili}. Yıl. Size Özel Güncelleme Ücreti: **{guncel_yenileme_ucreti} TL** (Normal Fiyat: 149 TL)")
     
     lisans_kodu = st.text_input("Siteden Aldığınız Müfredat Güncelleme Kodunu Girin:")
@@ -135,12 +133,13 @@ def hava_durumu_ve_mekan_al(sehir):
         sicaklik = res["current_weather"]["temperature"]
         kod = res["current_weather"]["weathercode"]
         
+        # Kod listesi yağış durumunu temsil eder
         if kod in:
             return sicaklik, "Yağışlı/Fırtınalı", "🚨 Kapalı Spor Salonu veya Çok Amaçlı Derslik / Sınıf (Teorik/Eğitsel Oyun)"
         else:
-            return sicaklik, "Açık/Güvenli", "🍏 Okul Bahçesi, Açık Saha veya Halı Saha (Fiziksel Dayanıklılık ve Parkur)"
+            return sicaklik, "Açık/Güvenli", "Açık Alan / Okul Bahçesi, Açık Saha veya Halı Saha (Fiziksel Dayanıklılık ve Parkur)"
     except:
-        return 20, "Hava Bilgisi Alınamadı (Güvenli Mod)", "🍏 Okul Bahçesi veya Kapalı Spor Salonu (Esnek Kullanım)"
+        return 20, "Hava Bilgisi Alınamadı (Güvenli Mod)", "Okul Bahçesi veya Kapalı Spor Salonu (Esnek Kullanım)"
 
 # --- 7. ANA MENÜ VE ARAYÜZ SİSTEMİ ---
 st.title("🏆 Türkiye Yüzyılı Maarif Modeli")
@@ -166,7 +165,7 @@ with tab1:
     
     for gun in gunler:
         with st.expander(f"📅 {gun} Günü Dersleri"):
-            col1, col2 = st.columns([3, 1])
+            col1, col2 = st.columns(2)
             with col1:
                 secilen_sinif = st.selectbox(f"{gun} için Sınıf/Ders Seçin:", sınıflar, key=f"sinif_{gun}")
             with col2:
@@ -179,7 +178,6 @@ with tab1:
     st.write("**Plan İndirme Kotalarınız:**")
     st.text(f"Yıllık Plan İndirme: {st.session_state.yillik_kota}/5 | Günlük Plan İndirme: {st.session_state.gunluk_kota}/20")
     
-    # KOTA KONTROL VE İNDİRME FONKSİYONLARI
     def kota_kontrol_ve_indir(tur):
         if st.session_state.kullanici_turu == "Free":
             if tur == "Yıllık" and st.session_state.yillik_kota >= 5:
@@ -206,3 +204,5 @@ with tab1:
 # --- TAB 2: ÇALIŞMA TAKVİMİ VE HATIRLATICI MODÜLÜ ---
 with tab2:
     st.subheader("📆 Resmi ve Kişisel Çalışma Takvimi")
+    st.write("**📌 Yeni Toplantı, Görev veya Sınav Hatırlatması Ekle**")
+    g_tarih = st.date_input("Görev Tarihi:", min_value=bugun)
