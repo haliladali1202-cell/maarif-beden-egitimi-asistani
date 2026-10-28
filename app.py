@@ -39,7 +39,7 @@ def durumu_guvenli_guncelle(yeni_statü):
     st.session_state.kullanici_turu = yeni_statü
     st.session_state.güvenlik_imzası = hashlib.sha256(f"{yeni_statü}-{GIZLI_TUZ_KELIME}".encode()).hexdigest()
 
-# --- RESMİ GENEL İŞ GÜNÜ VE EĞİTİM TAKVİMİ ---
+# --- RESMİ GENEL İŞ GÜNÜ VE EĞİTİM TAKVİMİ (MÜFREDATA UYGUN) ---
 RESMI_TAK_VERI = [
     {"Tarih": "01 Eylül", "Kategori": "Dönem Başı", "Etkinlik": "Sene Başı Öğretmenler Kurulu ve Zümre Toplantıları"},
     {"Tarih": "29 Ekim", "Kategori": "Resmi Tatil", "Etkinlik": "Cumhuriyet Bayramı Kutlama Programı"},
@@ -82,12 +82,13 @@ SAATLER_LISTE = [
     "6. Ders (13:20 - 14:00)", "7. Ders (14:10 - 14:50)", "8. Ders (15:00 - 15:40)"
 ]
 
-if "ders_programi_matris" not in st.session_state:
-    st.session_state.ders_programi_matris = {gun: {saat: "Boş Ders / Veri Yok" for saat in SAATLER_LISTE} for gun in GUNLER_LISTE}
-    for gun in GUNLER_LISTE:
-        st.session_state.ders_programi_matris[gun]["Öğle Arası (11:40 - 12:30)"] = "☕ ÖĞLE ARASI"
+# Canlı Hücre Düzenleme İçin DataFrame Altyapısı
+if "df_program_matris" not in st.session_state:
+    st.session_state.df_program_matris = pd.DataFrame(
+        {gun: ["Boş Ders / Veri Yok" if "Öğle Arası" not in saat else "☕ ÖĞLE ARASI" for saat in SAATLER_LISTE] for gun in GUNLER_LISTE},
+        index=SAATLER_LISTE
+    )
 
-# --- CANLI SAAT MOTORU ---
 @st.cache_data(ttl=3600)
 def canli_tarih_al():
     try:
@@ -176,8 +177,8 @@ if not durum_butunlugu_dogrula():
     st.session_state.clear()
     st.stop()
 
-if seznam_lock if 'seznam_lock' in locals() else sezon_kilitli_mi and st.session_state.kullanici_turu != "Elite":
-    st.error(f"🛑 Yeni Eğitim Dönemi Sezon Güncelleme Kilidi!")
+if'sezon_kilitli_mi' in globals() and 'st' in globals() and st.session_state.kullanici_turu != "Elite" and 'bugun' in globals():
+    st.error("🛑 Yeni Eğitim Dönemi Sezon Güncelleme Kilidi!")
     g_kodu = st.text_input("Sitenizden Aldığınız Sezon Yenileme Kodunu Girin:")
     if st.button("Sezon Kilidini Kaldır"):
         if g_kodu == otonom_lisans_dogrula(tel_no if 'tel_no' in locals() else "5321234567", g_kodu, "GUNCEL"):
@@ -197,7 +198,7 @@ def hava_durumu_ve_mekan_al(sehir):
         res = requests.get(url, timeout=3).json()
         sicaklik = res["current_weather"]["temperature"]
         kod = res["current_weather"]["weathercode"]
-        yagis_kodlari = [51, 53, 55, 61, 63, 65, 71, 73, 75, 80, 81, 82, 95, 96, 99]
+        yagis_kodlari = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95]
         if kod in yagis_kodlari:
             return sicaklik, "Yağışlı/Fırtınalı", "🚨 Kapalı Spor Salonu veya Çok Amaçlı Derslik / Sınıf (Teorik/Eğitsel Oyun)"
         else:
@@ -213,7 +214,8 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📆 Resmi İş Günü Takvimi", 
     "💎 Üyelik & Pro Paket"
 ])
-# --- TAB 1: DERS PROGRAMI VE DİNAMİK SAAT AYARLAMA ---
+
+# --- TAB 1: DERS PROGRAMI VE INTERAKTİF MATRİS HÜCRE DÜZENLEME ---
 with tab1:
     st.subheader("📊 Haftalık Ders Programı Matrisi")
     sehir = st.selectbox("Canlı Mekan Önerisi İçin Şehrinizi Seçin:", ["İstanbul", "Ankara", "İzmir", "Bursa"])
@@ -222,72 +224,52 @@ with tab1:
     st.info(f"💡 **Önerilen İşleme Alanı:** {mekan_onerisi}")
     
     st.write("---")
-    st.markdown("### ✏️ Hücre Bazlı Dinamik Ders Düzenleme")
+    st.markdown("### ✏️ Canlı Hücre Tıklama ile Ders Düzenleme")
+    st.caption("Aşağıdaki tablonun herhangi bir hücresine çift tıklayarak ders, sınıf, saat ve süre bilgilerini elinizle serbestçe düzenleyebilirsiniz. Yaptığınız değişiklikler anında kaydedilir.")
     
-    col_h1, col_h2, col_h3 = st.columns(3)
-    with col_h1:
-        sec_gun = st.selectbox("Gün Seçin:", GUNLER_LISTE)
-    with col_h2:
-        sec_saat = st.selectbox("Ders Saati Seçin:", [s for s in SAATLER_LISTE if "Öğle Arası" not in s])
-    with col_h3:
-        durum_modu = st.radio("İşlem Türü:", ["Aşağı Açılan Listeden Seç", "➕ Yeni Sınıf Ekle", "➕ Yeni Ders Ekle"], horizontal=True)
-    
-    if durum_modu == "Aşağı Açılan Listeden Seç":
-        secilen_icerik_sinif = st.selectbox("Sınıf / Görev Seçin:", st.session_state.dinamik_siniflar)
-        secilen_icerik_ders = st.selectbox("İşlenecek Ders Türü:", st.session_state.dinamik_dersler)
-        verilecek_metin = f"{secilen_icerik_sinif} ({secilen_icerik_ders})" if secilen_icerik_sinif not in ["Boş Ders", "Nöbet", "Rehberlik"] else secilen_icerik_sinif
-    elif durum_modu == "➕ Yeni Sınıf Ekle":
-        yeni_sinif_ad = st.text_input("Eklenecek Yeni Sınıf Adı (Örn: 11-H):")
-        if st.button("Sınıfı Havuza Ekle") and yeni_sinif_ad:
-            if yeni_sinif_ad not in st.session_state.dinamik_siniflar:
-                st.session_state.dinamik_siniflar.append(yeni_sinif_ad)
-                st.success(f"{yeni_sinif_ad} eklendi!")
-                st.rerun()
-        verilecek_metin = "Boş Ders / Veri Yok"
-    else:
-        yeni_ders_ad = st.text_input("Eklenecek Yeni Ders Adı (Örn: Halk Oyunları):")
-        if st.button("Dersi Havuza Ekle") and yeni_ders_ad:
-            if yeni_ders_ad not in st.session_state.dinamik_dersler:
-                st.session_state.dinamik_dersler.append(yeni_ders_ad)
-                st.success(f"{yeni_ders_ad} eklendi!")
-                st.rerun()
-        verilecek_metin = "Boş Ders / Veri Yok"
+    # Doğrudan tablo içinden hücre düzenleme motoru (st.data_editor)
+    st.session_state.df_program_matris = st.data_editor(
+        st.session_state.df_program_matris,
+        use_container_width=True,
+        num_rows="dynamic"
+    )
 
-    if durum_modu == "Aşağı Açılan Listeden Seç" and st.button("💾 Hücreyi Güncelle ve Programa İşle"):
-        st.session_state.ders_programi_matris[sec_gun][sec_saat] = verilecek_metin
-        st.success(f"✅ {sec_gun} günü {sec_saat} başarıyla güncellendi!")
-
-    st.write("---")
-    st.markdown("### 📋 Güncel Haftalık Ders Çizelgeniz")
-    df_gosterim = pd.DataFrame(st.session_state.ders_programi_matris)
-    st.table(df_gosterim)
-
+    # İstatistiki Hesaplamalar
     toplam_saat = 0
     nobet_sayisi = 0
     for g in GUNLER_LISTE:
         for s in SAATLER_LISTE:
-            val = st.session_state.ders_programi_matris[g][s]
-            if "(" in val: toplam_saat += 1
-            if "Nöbet" in val: nobet_sayisi += 1
+            val = str(st.session_state.df_program_matris.at[s, g])
+            if "Boş" not in val and "☕" not in val and val != "None" and val.strip() != "":
+                if "Nöbet" in val:
+                    nobet_sayisi += 1
+                else:
+                    toplam_saat += 1
 
     st.write("---")
     st.markdown("### 📊 Ders Programı Resmi Görev Özet Çıktısı")
     o1, o2, o3, o4 = st.columns(4)
     o1.metric("Öğretmen İsim:", st.session_state.ogretmen_adi)
     o2.metric("Toplam Maaş/Ek Ders Saati:", f"{toplam_saat} Saat")
-    o3.metric("Haftalık Nöbet Alanı/Günü:", f"{st.session_state.sabit_nobet_yeri} ({nobet_sayisi} Gün)")
+    o3.metric("Haftalık Nöbet Alanı/Günü:", f"{st.session_state.sabit_nobet_yeri} ({nobet_sayisi} Saat/Gün)")
     o4.metric("Sorumlu Rehberlik Sınıfı:", st.session_state.rehber_sinif)
 
     st.write("---")
-    csv_dosya = df_gosterim.to_csv().encode('utf-8')
+    csv_dosya = st.session_state.df_program_matris.to_csv().encode('utf-8')
     st.download_button(label="🖨️ Derli Toplu Yazdırılabilir Ders Programını İndir (Excel/CSV)", data=csv_dosya, file_name=f"{st.session_state.ogretmen_adi.replace(' ','_')}_ders_programi.csv", mime="text/csv")
-
-# --- TAB 2: RESMİ TUTANAK ÖNİZLEME VE DÜZENLEME SİHIRBAZI ---
+# --- TAB 2: RESMİ TUTANAK ÖNİZLEME VE DÜZENLEME SİHİRBAZI ---
 with tab2:
     st.subheader("📝 Düzenlenebilir Resmi Kurul ve Zümre Tutanak Sihirbazı")
-    tutanak_turu = st.selectbox("Üretilecek Tutanak Türünü Seçin:", ["Sene Başı Beden Eğitimi Zümre Öğretmenler Kurulu Tutanağı", "Şube Öğretmenler Kurulu (ŞÖK) Toplantı Tutanağı", "Eğitim Öğretim Yılı Sene Başı Öğretmenler Kurulu Toplantısı"])
-
-    varsayilan_tutanak_metni = f"OKUL ADI: {st.session_state.okul_muduru} adına kayıtlı eğitim kurumu\nTOPLANTI TÜRÜ: {tutanak_turu}\nTARİH: {bugun.strftime('%d.%m.%Y')}\n\nGÜNDEM MADDELERİ:\n1. Açılış, yoklama ve Okul Müdürü {st.session_state.okul_muduru}'nun konuşması.\n2. Türkiye Yüzyılı Maarif Modeli müfredatının beden eğitimi dersi üzerindeki etkileri.\n3. Ders programı görev dağılımı (Maaş dersi, Rehberlik sınıfı: {st.session_state.rehber_sinif}).\n4. Okul nöbet yerlerinin ({st.session_state.sabit_nobet_yeri}) planlanması.\n5. Dilek, temenniler ve kapanış.\n\nALINAN KARARLAR:\n1. Türkiye Yüzyılı Maarif Modeli doğrultusunda erdem-değer-eylem eksenli ders planları uygulanacaktır.\n2. Zümre başkanı {st.session_state.zumre_baskani} ve ders öğretmeni {st.session_state.ogretmen_adi} tarafından süreç odaklı rubrikler kullanılacaktır.\n\nİMZALAR:\nDers Öğretmeni: {st.session_state.ogretmen_adi}\nZümre Başkanı: {st.session_state.zumre_baskani}\nOkul Müdürü: {st.session_state.okul_muduru}"
+    st.info("Tutanak içeriğini indirmeden önce ekranda canlı olarak düzenleyebilirsiniz. İndirilen Word (.docx) belgesi son yaptığınız değişiklikleri içerir.")
+    
+    tutanak_turu = st.selectbox("Üretilecek Tutanak Türünü Seçin:", [
+        "Sene Başı Beden Eğitimi Zümre Öğretmenler Kurulu Tutanağı", 
+        "Şube Öğretmenler Kurulu (ŞÖK) Toplantı Tutanağı", 
+        "Eğitim Öğretim Yılı Sene Başı Öğretmenler Kurulu Toplantısı"
+    ])
+    
+    # Resmi mevzuata uygun zenginleştirilmiş şablon metni oluşturma
+    varsayilan_tutanak_metni = f"""OKUL ADI: {st.session_state.okul_muduru} adına kayıtli eğitim kurumu\nTOPLANTI TÜRÜ: {tutanak_turu}\nTARİH: {bugun.strftime('%d.%m.%Y')}\n\nGÜNDEM MADDELERİ:\n1. Açılış, yoklama ve Okul Müdürü {st.session_state.okul_muduru}'nun açılış konuşması.\n2. Türkiye Yüzyılı Maarif Modeli müfredatının beden eğitimi dersi üzerindeki pedagojik etkileri.\n3. Ders programı görev dağılımı (Maaş dersi, Rehberlik sınıfı: {st.session_state.rehber_sinif}).\n4. Okul resmi nöbet yerlerinin ({st.session_state.sabit_nobet_yeri}) işleyiş esaslarının planlanması.\n5. Dilek, temenniler ve kapanış.\n\nALINAN KARARLAR:\n1. Türkiye Yüzyılı Maarif Modeli doğrultusunda erdem-değer-eylem eksenli ders planları titizlikle uygulanacaktır.\n2. Zümre başkanı {st.session_state.zumre_baskani} ve ders öğretmeni {st.session_state.ogretmen_adi} tarafından süreç odaklı rubrikler ve öz değerlendirme araçları aktif olarak kullanılacaktır.\n\nİMZALAR:\nDers Öğretmeni: {st.session_state.ogretmen_adi}\nZümre Başkanı: {st.session_state.zumre_baskani}\nOkul Müdürü: {st.session_state.okul_muduru}"""
 
     st.markdown("### ✏️ Canlı Tutanak Düzenleme Alanı")
     duzenlenen_tutanak_metni = st.text_area("Metni istediğiniz gibi değiştirin:", value=varsayilan_tutanak_metni, height=350)
@@ -303,7 +285,7 @@ with tab2:
                 doc.add_paragraph(satir)
         bio = io.BytesIO()
         doc.save(bio)
-        st.success("🎉 Tutanak üretildi!")
+        st.success("🎉 Tutanak resmi düzene uygun olarak ve güncellenmiş son haliyle üretildi!")
         st.download_button(label="📥 Word Belgesini İndir", data=bio.getvalue(), file_name=f"{tutanak_turu.replace(' ', '_')}.docx")
 
 # --- TAB 3: OKUL & KADRO AYARLARI ---
@@ -323,14 +305,15 @@ with tab3:
 with tab4:
     st.subheader("📆 Genel Resmi Eğitim Öğretim İş Günü Takvimi")
     st.table(pd.DataFrame(RESMI_TAK_VERI))
-
+    
     st.markdown("### 📌 Kişisel Hatırlatma ve Görev Ekle")
     g_tarih = st.date_input("Görev Tarihi:", min_value=bugun)
     g_aciklama = st.text_input("Görev Notu / Toplantı Açıklaması:")
     if st.button("Görev Takvimine İşle") and g_aciklama.strip():
         st.session_state.gorevler.append({"Tarih": g_tarih.strftime("%d %B"), "Kategori": "Özel Not", "Etkinlik": g_aciklama.strip()})
         st.rerun()
-    if st.session_state.gorevler: st.table(pd.DataFrame(st.session_state.gorevler))
+    if st.session_state.gorevler: 
+        st.table(pd.DataFrame(st.session_state.gorevler))
 
 # --- TAB 5: ABONELİK VE PRO PAKET ---
 with tab5:
@@ -340,4 +323,4 @@ with tab5:
         st.markdown("### 🥇 Elite Sürüm\n**599 TL / Yıl**\n* Tüm Özellikler Açık\n* Sınırsız Evrak Üretimi\n* Çoklu Cihaz ve Koruması")
 
 if st.session_state.kullanici_turu == "Free":
-    st.markdown('🤝 **Sponsorluk:** Okul spor malzemeleri ihtiyaçlarınız için **Decathlon Türkiye** eğitim kataloğunu inceleyebilirsiniz.', unsafe_allow_html=True)
+    st.markdown('<div class="premium-banner">🤝 <b>Sponsorluk:</b> Okul spor malzemeleri ihtiyaçlarınız için <b>Decathlon Türkiye</b> eğitim kataloğunu inceleyebilirsiniz.</div>', unsafe_allow_html=True)
