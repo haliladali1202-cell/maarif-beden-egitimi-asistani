@@ -7,7 +7,7 @@ import hashlib
 import time
 from docx import Document
 
-# --- SİBER GÜVENLİK VE EKRAN AYARLARI ---
+# --- SİBER GÜVENLİK VE APPLİKASYON AYARLARI ---
 try:
     st.set_page_config(page_title="Maarif Beden Eğitimi Asistanı SaaS PRO", page_icon="🏆", layout="wide")
 except:
@@ -24,7 +24,7 @@ if "gorevler" not in st.session_state: st.session_state.gorevler = []
 if "kullanici_turu" not in st.session_state: st.session_state.kullanici_turu = "Free"
 if "aktivasyon_tarihi" not in st.session_state: st.session_state.aktivasyon_tarihi = None
 
-# --- DİNAMİK LİSTE VE KADRO YAPILANDIRMASI ---
+# --- MEVZUATSAL KADRO VE LİSTE YAPILANDIRMASI ---
 if "ogretmen_adi" not in st.session_state: st.session_state.ogretmen_adi = "Beden Eğitimi Öğretmeni"
 if "okul_muduru" not in st.session_state: st.session_state.okul_muduru = "Okul Müdürü"
 if "zumre_baskani" not in st.session_state: st.session_state.zumre_baskani = "Zümre Başkanı"
@@ -38,16 +38,7 @@ if "dinamik_dersler" not in st.session_state:
     st.session_state.dinamik_dersler = ["Beden Eğitimi ve Spor", "Sağlık Bilgisi", "Trafik Kültürü", "Spor Eğitimi", "Sosyal Etkinlik", "Rehberlik Planı"]
 
 MAAS_KARSILIGI_SAAT = 15
-
-# --- CANLI EK DERS ÜCRETİ KAZICI MOTORU ---
-@st.cache_data(ttl=86400)
-def canli_ek_ders_ucreti_al():
-    try:
-        return 125.0
-    except:
-        return 125.0
-
-EK_DERS_SAAT_UCRETI = canli_ek_ders_ucreti_al()
+EK_DERS_SAAT_UCRETI = 125.0
 
 GUNLER_LISTE = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"]
 SAATLER_LISTE = [
@@ -166,7 +157,7 @@ if deneme_suresi_doldu_mu and st.session_state.kullanici_turu == "Free":
     st.stop()
 
 if'sezon_kilitli_mi' in locals() and st.session_state.kullanici_turu != "Elite":
-    if 'sezon_kilitli_mi' in locals() and kilit_durumu_aktif if 'kilit_durumu_aktif' in locals() else False:
+    if 'sezon_kilitli_mi' in locals() and False:
         st.error("🛑 Yeni Eğitim Dönemi Sezon Güncelleme Kilidi!")
         g_kodu = st.text_input("Sitenizden Aldığınız Sezon Yenileme Kodunu Girin:")
         if st.button("Sezon Kilidini Kaldır"):
@@ -187,7 +178,8 @@ def hava_durumu_ve_mekan_al(sehir):
         res = requests.get(url, timeout=3).json()
         sicaklik = res["current_weather"]["temperature"]
         kod = res["current_weather"]["weathercode"]
-        if kod in:
+        yagis_kodlari = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95]
+        if kod in yagis_kodlari:
             return sicaklik, "Yağışlı/Fırtınalı", "🚨 Kapalı Spor Salonu veya Çok Amaçlı Derslik / Sınıf (Teorik/Eğitsel Oyun)"
         else:
             return sicaklik, "Açık/Güvenli", "Açık Alan / Okul Bahçesi, Açık Saha veya Halı Saha (Fiziksel Dayanıklılık)"
@@ -250,9 +242,7 @@ with tab1:
     hazirlik_planlama_saati = toplam_saat // 10  # Her 10 saate 1 saat hazırlık planlama (Maks 3 saat)
     if hazirlik_planlama_saati > 3: hazirlik_planlama_saati = 3
     
-    # Basit koruma: Rehberlik günü muaf günlerdeyse veya nöbet o güne denk geliyorsa iptal edilir kurgusu
     rehberlik_ek_saat = 2 if rehberlik_var_mi else 0
-    
     nobet_ek_saat = nobet_sayisi * 3
     
     toplam_kamu_yuku = toplam_saat + hazirlik_planlama_saati + rehberlik_ek_saat + nobet_ek_saat
@@ -312,7 +302,7 @@ with tab2:
         doc.add_paragraph("\n\n")
         table = doc.add_table(rows=1, cols=3)
         table.autofit = True
-        hdr_cells = table.rows.cells
+        hdr_cells = table.rows[0].cells
         hdr_cells[0].text = f"{st.session_state.ogretmen_adi}\nBeden Eğitimi Öğretmeni\nİmza"
         hdr_cells[1].text = f"{st.session_state.zumre_baskani}\nZümre Başkanı\nİmza"
         hdr_cells[2].text = f"{st.session_state.okul_muduru}\nOkul Müdürü\nOLUR / UYGUNDUR"
